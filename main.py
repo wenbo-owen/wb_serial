@@ -8,7 +8,7 @@ from ui_serial_wb import Ui_MainWindow
 
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtCore import (QTimer, Signal)
-from PySide6.QtWidgets import (QMainWindow, QApplication)
+from PySide6.QtWidgets import (QMainWindow, QApplication,QMessageBox)
 import base64, os
 
 
@@ -26,8 +26,8 @@ class SerialTool(QMainWindow, Ui_MainWindow):
         # self.signalRecieve.connect(self.uart_receive_display)   #   收到串口数据后，连接到uart_receive_display函数
         #
         # # 创建定时发送定时器
-        # self.timer_send = QTimer(self)
-        # # self.timer_send.timeout.connect(self.UartSend)
+        self.timer_send = QTimer(self)
+        self.timer_send.timeout.connect(self.UartSend)
 
 
     #刷新串口，读取串口设备
@@ -58,33 +58,28 @@ class SerialTool(QMainWindow, Ui_MainWindow):
     def InitUIEvent(self):
             self.Combo_COM.activated.connect(self.ComActivated)                # 串口port属性
             # self.Combo_COM.popupAboutToBeShown.connect(self.RefreshComActivated)
-            # self.Combo_Baudrate.activated[str].connect(self.BaudActivated)
-            # self.Combo_Parity.activated[str].connect(self.ParityBitActivated)
-            # self.Combo_Data_bit.activated[str].connect(self.DataBitActivated)
-            # self.Combo_Stop_bit.activated[str].connect(self.StopBitActivated)
-            #
+            self.Combo_Baudrate.activated.connect(self.BaudActivated)
+            self.Combo_Parity.activated.connect(self.ParityBitActivated)
+            self.Combo_Data_bit.activated.connect(self.DataBitActivated)
+            self.Combo_Stop_bit.activated.connect(self.StopBitActivated)
+
             self.Button_Onoff_com.clicked.connect(self.StartComActivated)     #按键打开串口也会启动创建线程
             # self.Button_Clear_display.clicked.connect(self.ClearReceiveActivated)
 
+            #这里的 lambda函数 必不可少
+            self.Box_Display_hex.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_hex))
+            self.Box_Auto_wrap.stateChanged.connect(lambda: self.CheckActivated(self.Box_Auto_wrap))
+            self.Box_Display_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_send))
+            self.Box_Display_time.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_time))
+            #发射-定时 起作用
+            self.Box_Periodic_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Periodic_send))
+            self.Box_Hex_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Hex_send))
 
-            # self.Box_Display_hex.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_hex))
-            # self.Box_Auto_wrap.stateChanged.connect(lambda: self.CheckActivated(self.Box_Auto_wrap))
-            # self.Box_Display_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_send))
-            # self.Box_Display_time.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_time))
-            #
-            #
-            # self.Box_Periodic_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Periodic_send))
-            # self.Box_Hex_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Hex_send))
-            #
             # self.Button_Clear_send.clicked.connect(self.ClearSendActivated)
-            # self.Button_Send.clicked.connect(self.UartSend)
+            self.Button_Send.clicked.connect(self.UartSend)
 
     # 串口对象的port属性
-    def ComActivated(self, text):
-        self.l_serial.port = self.com_list[text]
 
-        print(self.l_serial.port)
-        print(f'当前选中的项目是：{self.Combo_COM.currentText()}')
 
 
     def RefreshComActivated(self):
@@ -94,11 +89,18 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             # print(l_serial.port)
         print(self.com_list[0])
 
-    def BaudActivated(self, text):
-        self.l_serial.baudrate = int(text)
-        print(text)
 
-    def ParityBitActivated(self, text):
+    def ComActivated(self, text):
+        self.l_serial.port = self.Combo_COM.itemText(text)
+        print(f'当前选中的项目是：{ self.l_serial.port}')
+
+    def BaudActivated(self, text):
+        self.l_serial.baudrate = int(self.Combo_Baudrate.itemText(text))
+        print(self.l_serial.baudrate )
+
+    def ParityBitActivated(self, index):
+
+        text = self.Combo_Parity.itemText(index)
         print(text)
         if (text == 'N'):
             self.l_serial.parity = serial.PARITY_NONE
@@ -108,10 +110,26 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.l_serial.parity = serial.PARITY_EVEN
 
     def DataBitActivated(self, text):
-        self.l_serial.bytesize = int(text)
+        # 这里要传入 int ，而不是str
+        self.l_serial.bytesize = int(self.Combo_Data_bit.itemText(text))
+        print(self.l_serial.bytesize)
 
-    def StopBitActivated(self, text):
-        self.l_serial.stopbits = int(text)
+    def StopBitActivated(self, text):   #停止位设置
+        self.l_serial.stopbits = int(self.Combo_Stop_bit.itemText(text))
+
+    def CheckActivated(self, BtnCheck):
+
+        if BtnCheck == self.Box_Periodic_send:          # 发射区的定时check_box
+            if self.Box_Periodic_send.checkState():
+                time = self.LineEdit_Ms.text()
+                time_val = int(time, 10)
+                if time_val > 0:
+                    self.timer_send.start(time_val)
+            else:
+                self.timer_send.stop()      #定时器关闭
+
+
+
 
     def ClearReceiveActivated(self):
         self.Textbrowser_Receive.setPlainText('')
@@ -121,7 +139,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
     def StartComActivated(self):
 
         if self.l_serial.isOpen():
-            self.timer_send.stop()
+            # self.timer_send.stop()
             #self.thread_read.join()
             self.l_serial.close()
             self.Button_Onoff_com.setText("打开串口")
@@ -142,10 +160,10 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Combo_Parity.setEnabled(False)
 
             #跟线程有关
-            self.thread_read = None
-            self.thread_read = threading.Thread(target=self.UartRead)
-            self.thread_read.setDaemon(True)
-            self.thread_read.start()
+            # self.thread_read = None
+            # self.thread_read = threading.Thread(target=self.UartRead)
+            # self.thread_read.setDaemon(True)
+            # self.thread_read.start()
 
     def uart_receive_display(self, obj):
         now_time = datetime.now()  # 获取当前时间
@@ -199,6 +217,49 @@ class SerialTool(QMainWindow, Ui_MainWindow):
                     self.signalRecieve.emit(self.data)
 
             time.sleep(0.1)
+    def UartSend(self):
+        InputStr = self.TextEdit_Send.toPlainText()
+
+        if InputStr == '' :
+            return
+        if self.Box_Display_send.checkState():
+            self.recv_data = '[Send]' + InputStr
+            self.Textbrowser_Receive.append(self.recv_data)
+
+        if self.Box_Hex_send.checkState():
+
+            InputStr =InputStr.strip()
+            send_lst=[]
+
+            while InputStr != '':
+
+                try:
+
+                    num = int(InputStr[0:2],16)               #这里出问题会抛出异常
+                    send_lst.append(num)
+                    InputStr = InputStr[2:]         #右移两位数据
+                    InputStr = InputStr.strip()
+
+                except ValueError:
+
+                    QMessageBox.critical(self,'pycom','请输入十六进制数据，以空格结束！')
+                    return None
+
+            print(f'16进制数据：{bytes(send_lst)}')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
