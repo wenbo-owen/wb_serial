@@ -92,7 +92,11 @@ class SerialTool(QMainWindow, Ui_MainWindow):
 
     def ComActivated(self, text):
         self.l_serial.port = self.Combo_COM.itemText(text)
-        print(f'当前选中的项目是：{ self.l_serial.port}')
+        print(f'当前选中的COM是：{ self.l_serial.port}')
+        print(f'当前选波特率：{self.l_serial.baudrate}')
+        print(f'当前校验位：{self.l_serial.parity}')
+        print(f'当前数据位：{self.l_serial.bytesize}')
+        print(f'当前停止位：{self.l_serial.stopbits}')
 
     def BaudActivated(self, text):
         self.l_serial.baudrate = int(self.Combo_Baudrate.itemText(text))
@@ -222,11 +226,11 @@ class SerialTool(QMainWindow, Ui_MainWindow):
 
         if InputStr == '' :
             return
-        if self.Box_Display_send.checkState():
+        if self.Box_Display_send.isChecked():
             self.recv_data = '[Send]' + InputStr
             self.Textbrowser_Receive.append(self.recv_data)
 
-        if self.Box_Hex_send.checkState():
+        if self.Box_Hex_send.isChecked():
 
             InputStr =InputStr.strip()
             send_lst=[]
@@ -245,7 +249,10 @@ class SerialTool(QMainWindow, Ui_MainWindow):
                     QMessageBox.critical(self,'pycom','请输入十六进制数据，以空格结束！')
                     return None
 
-            print(f'16进制数据：{bytes(send_lst)}')
+            InputStr = bytes(send_lst)
+            self.l_serial.write(InputStr)
+        else:
+            self.l_serial.write(InputStr)
 
 
 
