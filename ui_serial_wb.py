@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
     QPushButton, QSizePolicy, QSpacerItem, QStatusBar,
     QTextBrowser, QTextEdit, QVBoxLayout, QWidget)
 
+from My_Widget import MyQComBox
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -67,7 +69,7 @@ class Ui_MainWindow(object):
 
         self.formLayout.setWidget(0, QFormLayout.LabelRole, self.Label_COM)
 
-        self.Combo_COM = QComboBox(self.groupBox)
+        self.Combo_COM = MyQComBox(self.groupBox)
         self.Combo_COM.setObjectName(u"Combo_COM")
         sizePolicy1.setHeightForWidth(self.Combo_COM.sizePolicy().hasHeightForWidth())
         self.Combo_COM.setSizePolicy(sizePolicy1)
