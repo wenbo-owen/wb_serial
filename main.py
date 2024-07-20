@@ -26,7 +26,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
         self.initCOM()             #   串口初始化
         self.init_timer()          # 初始化定时器
         # self.signalRecieve.connect(self.uart_receive_display)   #   收到串口数据后，连接到uart_receive_display函数
-
+        # self.temp()
 
 
 
@@ -52,8 +52,19 @@ class SerialTool(QMainWindow, Ui_MainWindow):
         self.timer_send = QTimer(self)
         self.timer_send.timeout.connect(self.UartSend)
 
+        self.thread_read = None  # 打开串口需要开启线程 ，线程的作用是检测串口的接收数据
+        # self.thread_read = threading.Thread(target=self.UartRead)  # 创建线程对象，
+        self.thread_read = threading.Thread(target=self.temp)
+        self.thread_read.setDaemon(True)
+
 #-----------------------------------------------------------------------------------------------------
 
+    # 如果线程挂载这个函数，当线程thread启动后，就回每隔一段时间去自动调用这个程序
+    # 而不会让这个程序堵死
+    def temp(self):
+        while True:
+            print('123')
+            time.sleep(0.1)
     #刷新串口，读取串口设备
     def refreshPort(self):
         self.com_list = []
@@ -169,7 +180,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
     #启动，停用串口功能
     def StartComActivated(self):
 
-        if self.l_serial.isOpen():
+        if self.l_serial.isOpen():              #下面的代码是关闭串口
             # self.timer_send.stop()
             #self.thread_read.join()
             self.l_serial.close()
@@ -180,7 +191,9 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Combo_Data_bit.setEnabled(True)
             self.Combo_Stop_bit.setEnabled(True)
             self.Combo_Parity.setEnabled(True)
-        else:
+
+
+        else:                                   # 下面的代码是打开串口
             self.l_serial.open()
             self.Button_Onoff_com.setText("关闭串口")
 
@@ -190,11 +203,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Combo_Stop_bit.setEnabled(False)
             self.Combo_Parity.setEnabled(False)
 
-            #跟线程有关
-            # self.thread_read = None
-            # self.thread_read = threading.Thread(target=self.UartRead)
-            # self.thread_read.setDaemon(True)
-            # self.thread_read.start()
+            self.thread_read.start()        #进程开启
 
     def uart_receive_display(self, obj):
         now_time = datetime.now()  # 获取当前时间
@@ -231,6 +240,8 @@ class SerialTool(QMainWindow, Ui_MainWindow):
     # time.sleep(0.2)
     # 串口读函数
     def UartRead(self):
+
+        print('我是被进程调用的函数UartRead')
         while self.l_serial.isOpen():
             print('uartread')
             num = self.l_serial.inWaiting()
