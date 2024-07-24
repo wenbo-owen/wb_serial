@@ -22,15 +22,11 @@ class SerialTool(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setupUi_my()
         self.refreshPort()
-        self.InitUIEvent()         #   初始化ui事件   ******
+        self.InitUIEvent()         #   初始化ui事件
         self.initCOM()             #   串口初始化
-        self.init_timer()          # 初始化定时器
-        # self.signalRecieve.connect(self.uart_receive_display)   #   收到串口数据后，连接到uart_receive_display函数
-        # self.temp()
-
-
-
-
+        self.init_timer()          #   初始化定时器
+        #   收到串口数据后会启动槽函数， 执行uart_receive_display函数
+        self.signalRecieve.connect(self.uart_receive_display)
 
     def setupUi_my(self):
 
@@ -43,6 +39,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             theme.addAction(th)
             th.triggered.connect(self.change_theme)
 
+
     def change_theme(self):
         action = self.sender()
         theme_name = action.text()
@@ -52,19 +49,15 @@ class SerialTool(QMainWindow, Ui_MainWindow):
         self.timer_send = QTimer(self)
         self.timer_send.timeout.connect(self.UartSend)
 
-        self.thread_read = None  # 打开串口需要开启线程 ，线程的作用是检测串口的接收数据
-        # self.thread_read = threading.Thread(target=self.UartRead)  # 创建线程对象，
-        self.thread_read = threading.Thread(target=self.temp)
-        self.thread_read.setDaemon(True)
 
-#-----------------------------------------------------------------------------------------------------
-
+    ''' 
     # 如果线程挂载这个函数，当线程thread启动后，就回每隔一段时间去自动调用这个程序
-    # 而不会让这个程序堵死
+    # 而不会让这个程序阻塞住，像单片机的while(1) ，如果没有操作系统，就是死循环，什么也干不了
     def temp(self):
         while True:
             print('123')
             time.sleep(0.1)
+    '''
     #刷新串口，读取串口设备
     def refreshPort(self):
         self.com_list = []
@@ -99,7 +92,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Combo_Data_bit.activated.connect(self.DataBitActivated)
             self.Combo_Stop_bit.activated.connect(self.StopBitActivated)
 
-            self.Button_Onoff_com.clicked.connect(self.StartComActivated)     #按键打开串口也会启动创建线程
+            self.Button_Onoff_com.clicked.connect(self.OpenSerial)     #按键打开串口也会启动创建线程
             self.Button_Clear_display.clicked.connect(self.ClearReceiveActivated)
 
             #这里的 lambda函数 必不可少
@@ -115,8 +108,6 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Button_Send.clicked.connect(self.UartSend)
 
     # 串口对象的port属性
-
-
 
     def RefreshComActivated(self):
         self.refreshPort()
@@ -163,14 +154,13 @@ class SerialTool(QMainWindow, Ui_MainWindow):
         # 这段if 判断是判断 定时发送的 QCheckBox的功能
         if BtnCheck == self.Box_Periodic_send:          # 发射区的  定时check_box
             if self.Box_Periodic_send.isChecked():      # 在pyside6中用ischecked 检查QCheckBox的状态
-                time = self.LineEdit_Ms.text()
-                time_val = int(time, 10)
-                if time_val > 0:
-                    self.timer_send.start(time_val)     # 开启定时器，参数为设置 时长
+                if self.l_serial.isOpen():
+                    time = self.LineEdit_Ms.text()
+                    time_val = int(time, 10)
+                    if time_val > 0:
+                        self.timer_send.start(time_val)     # 开启定时器，参数为设置 时长
             else:
                 self.timer_send.stop()                  #定时器关闭
-
-
 
 
     def ClearReceiveActivated(self):
@@ -178,7 +168,7 @@ class SerialTool(QMainWindow, Ui_MainWindow):
 
 
     #启动，停用串口功能
-    def StartComActivated(self):
+    def OpenSerial(self):
 
         if self.l_serial.isOpen():              #下面的代码是关闭串口
             # self.timer_send.stop()
@@ -191,7 +181,8 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Combo_Data_bit.setEnabled(True)
             self.Combo_Stop_bit.setEnabled(True)
             self.Combo_Parity.setEnabled(True)
-
+            self.timer_send.stop()              # 定时器关闭
+                                                # 取消定时器状态
 
         else:                                   # 下面的代码是打开串口
             self.l_serial.open()
@@ -203,62 +194,75 @@ class SerialTool(QMainWindow, Ui_MainWindow):
             self.Combo_Stop_bit.setEnabled(False)
             self.Combo_Parity.setEnabled(False)
 
-            self.thread_read.start()        #进程开启
+            # 打开串口需要开启线程 ，线程的作用是检测串口的接收数据
+            self.thread_read = None
+            self.thread_read = threading.Thread(target=self.UartRead)  # 创建线程对象，
+            # self.thread_read = threading.Thread(target=self.temp)       # 线程测试用例
+            self.thread_read.Daemon = True
+            self.thread_read.start()             #进程开启 ,线程只允许启动一次
 
     def uart_receive_display(self, obj):
-        now_time = datetime.now()  # 获取当前时间
+        now_time = datetime.now()                                   # 获取当前时间
         new_time = now_time.strftime('[%H:%M:%S:%f]')
-        if self.Box_Display_hex.checkState():  # hex显示
-            if (self.Box_Display_time.checkState()):  # 显示时间
+
+        # --------------- 关于是否hex显示的问题 --------------------------------------
+        if self.Box_Display_hex.isChecked():                       # hex显示
+            # ---------------------- 关于是否显示时间 ---------------------
+            if self.Box_Display_time.isChecked():                   # 显示时间
                 self.recv_data = '\r\n' + new_time + obj.strip()
             else:
-                self.recv_data = obj.strip()
-            if self.Box_Display_send.checkState():  # 显示发送
-                self.recv_data = '\r\n' + '[Receive]:' + self.recv_data
+                self.recv_data = obj.strip()                        #2进制显示已经转字符串了
 
-            if self.Box_Auto_wrap.checkState():
-                self.Textbrowser_Receive.append(self.recv_data)
-            else:
-                self.Textbrowser_Receive.insertPlainText(self.recv_data)
-            # self.Textbrowser_Receive.append(self.recv_data)
-        else:
-            if self.Box_Display_time.checkState():
+        else:  # 普通显示模式 来的数据依然是bytes 需要先解码
+            # ---------------------- 关于是否显示时间 ---------------------
+            if self.Box_Display_time.isChecked(): # 需要显示时间
                 self.recv_data = '\r\n' + new_time + obj.decode('utf-8', "ignore")
             else:
                 self.recv_data = obj.decode('utf-8', "ignore")
 
-            if self.Box_Display_send.checkState():
-                self.recv_data = '\r\n' + '[Receive]:' + self.recv_data
+        if self.Box_Display_send.isChecked():  # 输入显示发送的话，接收到的数据就要加上[Receive]:
+            self.recv_data = '\r\n' + '[Receive]:' + self.recv_data
 
-            if self.Box_Auto_wrap.checkState():
-                self.Textbrowser_Receive.append(self.recv_data)
-            else:
-                self.Textbrowser_Receive.insertPlainText(self.recv_data)
+        if self.Box_Auto_wrap.checkState():  # 显示模式
+            self.Textbrowser_Receive.append(self.recv_data)
 
-        self.Textbrowser_Receive.moveCursor(self.Textbrowser_Receive.textCursor().End)  # 文本框显示到底部
+        else:
+            self.Textbrowser_Receive.insertPlainText(self.recv_data)
+        # 文本框显示到底部
+        self.Textbrowser_Receive.moveCursor(self.Textbrowser_Receive.textCursor().End)
 
     # time.sleep(0.2)
-    # 串口读函数
+
+    '''
+    串口读函数
+    这个是被thread.read进程调用的函数,串口打开就会循环读取串口的接收指
+    serial.inWaiting() 方法就是不断的读取 接收缓冲区的数值
+    字符串格式化功能  '{:02X}' ,等价为 '{0:02X}'以为format()默认是一个参数，
+    02 表示输出的十六进制数至少要有两位，如果不足两位则在前面补0。
+    X 表示以十六进制（大写字母）形式输出
+    因此，如果self.data[i]是10（十进制），那么格式化后的字符串将是'0A'。
+    '''
     def UartRead(self):
 
         print('我是被进程调用的函数UartRead')
         while self.l_serial.isOpen():
-            print('uartread')
+
             num = self.l_serial.inWaiting()
             if num:
-                self.data = self.l_serial.read(num)
-                if self.Box_Display_hex.checkState():  # 16进制接收  就是哪个 hex check_box
+                self.data = self.l_serial.read(num)   # self.data 就是 bytes类
+                if self.Box_Display_hex.isChecked():  # hex 显示
                     hex_data = ''
-                    for i in range(0, len(self.data)):
-                        hex_data = hex_data + '{:02X}'.format(self.data[i]) + ' '
+                    for i in range(0, len(self.data)): #从bytes中取一个字节
+                        hex_data = hex_data + '{:02X}'.format(self.data[i]) + ' ' #进行字符串格式化
                     # self.Textbrowser_Receive.append(hex_data.strip())
-                    self.signalRecieve.emit(hex_data)
+                    self.signalRecieve.emit(hex_data)                           # 将数据发送出去
                 else:
                     # self.Textbrowser_Receive.append(data.decode().strip())
                     # self.Textbrowser_Receive.insertPlainText(data.decode('utf-8',"ignore"))
-                    self.signalRecieve.emit(self.data)
+                    self.signalRecieve.emit(self.data)      # 数据传到槽函数中进行deencode解码
 
             time.sleep(0.1)
+
     def UartSend(self):
 
         if self.l_serial.isOpen():
@@ -292,23 +296,10 @@ class SerialTool(QMainWindow, Ui_MainWindow):
                 InputStr = bytes(send_lst)
                 self.l_serial.write(InputStr)
             else:
-                self.l_serial.write(InputStr.encode())
+                self.l_serial.write(InputStr.encode()+b'\0')
 
         else:
             QMessageBox.critical(self,'error','串口未连接！')
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
