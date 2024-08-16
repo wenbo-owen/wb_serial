@@ -13,13 +13,14 @@ import base64, os
 from qt_material import apply_stylesheet,list_themes
 
 
-class SerialTool(QMainWindow, Ui_MainWindow):
+class SerialTool(QMainWindow):
     signalRecieve = Signal(object)
 
     def __init__(self):
         super().__init__()
 
-        self.setupUi(self)
+        self.ui_main= Ui_MainWindow()
+        self.ui_main.setupUi(self)
         self.setupUi_my()
         self.refreshPort()
         self.InitUIEvent()         #   初始化ui事件
@@ -30,12 +31,12 @@ class SerialTool(QMainWindow, Ui_MainWindow):
 
     def setupUi_my(self):
 
-        theme = self.menubar.addMenu('主题切换')
+        theme = self.ui_main.menubar.addMenu('主题切换')
         qt_m = QAction('Qt_Material',self)
         theme.addAction(qt_m)
 
         for item in list_themes():
-            th = QAction(item,self)
+            th = QAction(item,self)     # 创建一个QAction 对象
             theme.addAction(th)
             th.triggered.connect(self.change_theme)
 
@@ -62,50 +63,50 @@ class SerialTool(QMainWindow, Ui_MainWindow):
     def refreshPort(self):
         self.com_list = []
         port_list = list(serial.tools.list_ports.comports())    #读取串口 返回列表 ,在这里并没有创建串口对象
-        self.Combo_COM.clear()
+        self.ui_main.Combo_COM.clear()
         if len(port_list) > 0:
             for port_com in port_list:                  # 遍历串口
                 #port_serial = list(port_com)[0]         # 就是port_com.device
                 port_serial = port_com.device
-                self.Combo_COM.addItem(port_serial)
+                self.ui_main.Combo_COM.addItem(port_serial)
                 self.com_list.append(port_serial)
         else:
-            self.Combo_COM.addItem('')
+            self.ui_main.Combo_COM.addItem('')
 
     # 初始化串口，我认为这里是装载UI界面上默认的参数
     def initCOM(self):
         self.l_serial = serial.Serial()             # l_serial就是一个串口对象
         if (len(self.com_list)):
-            self.l_serial.port = self.Combo_COM.currentText()
-        self.l_serial.baudrate = int(self.Combo_Baudrate.currentText())
-        self.l_serial.bytesize = int(self.Combo_Data_bit.currentText())
-        self.l_serial.stopbits = int(self.Combo_Stop_bit.currentText())
-        self.l_serial.parity = self.Combo_Parity.currentText()
+            self.l_serial.port = self.ui_main.Combo_COM.currentText()
+        self.l_serial.baudrate = int(self.ui_main.Combo_Baudrate.currentText())
+        self.l_serial.bytesize = int(self.ui_main.Combo_Data_bit.currentText())
+        self.l_serial.stopbits = int(self.ui_main.Combo_Stop_bit.currentText())
+        self.l_serial.parity = self.ui_main.Combo_Parity.currentText()
         # serial.PARITY_NONE
         self.l_serial.timeout = 0.2
 
     def InitUIEvent(self):
-            self.Combo_COM.activated.connect(self.ComActivated)                # 串口port属性
-            self.Combo_COM.popupAboutToBeShown.connect(self.RefreshComActivated)
-            self.Combo_Baudrate.activated.connect(self.BaudActivated)
-            self.Combo_Parity.activated.connect(self.ParityBitActivated)
-            self.Combo_Data_bit.activated.connect(self.DataBitActivated)
-            self.Combo_Stop_bit.activated.connect(self.StopBitActivated)
+            self.ui_main.Combo_COM.activated.connect(self.ComActivated)                # 串口port属性
+            self.ui_main.Combo_COM.popupAboutToBeShown.connect(self.RefreshComActivated)
+            self.ui_main.Combo_Baudrate.activated.connect(self.BaudActivated)
+            self.ui_main.Combo_Parity.activated.connect(self.ParityBitActivated)
+            self.ui_main.Combo_Data_bit.activated.connect(self.DataBitActivated)
+            self.ui_main.Combo_Stop_bit.activated.connect(self.StopBitActivated)
 
-            self.Button_Onoff_com.clicked.connect(self.OpenSerial)     #按键打开串口也会启动创建线程
-            self.Button_Clear_display.clicked.connect(self.ClearReceiveActivated)
+            self.ui_main.Button_Onoff_com.clicked.connect(self.OpenSerial)     #按键打开串口也会启动创建线程
+            self.ui_main.Button_Clear_display.clicked.connect(self.ClearReceiveActivated)
 
             #这里的 lambda函数 必不可少
-            self.Box_Display_hex.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_hex))
-            self.Box_Auto_wrap.stateChanged.connect(lambda: self.CheckActivated(self.Box_Auto_wrap))
-            self.Box_Display_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_send))
-            self.Box_Display_time.stateChanged.connect(lambda: self.CheckActivated(self.Box_Display_time))
+            self.ui_main.Box_Display_hex.stateChanged.connect(lambda: self.CheckActivated(self.ui_main.Box_Display_hex))
+            self.ui_main.Box_Auto_wrap.stateChanged.connect(lambda: self.CheckActivated(self.ui_main.Box_Auto_wrap))
+            self.ui_main.Box_Display_send.stateChanged.connect(lambda: self.CheckActivated(self.ui_main.Box_Display_send))
+            self.ui_main.Box_Display_time.stateChanged.connect(lambda: self.CheckActivated(self.ui_main.Box_Display_time))
             #发射-定时 起作用
-            self.Box_Periodic_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Periodic_send))
-            self.Box_Hex_send.stateChanged.connect(lambda: self.CheckActivated(self.Box_Hex_send))
+            self.ui_main.Box_Periodic_send.stateChanged.connect(lambda: self.CheckActivated(self.ui_main.Box_Periodic_send))
+            self.ui_main.Box_Hex_send.stateChanged.connect(lambda: self.CheckActivated(self.ui_main.Box_Hex_send))
 
             # self.Button_Clear_send.clicked.connect(self.ClearSendActivated)
-            self.Button_Send.clicked.connect(self.UartSend)
+            self.ui_main.Button_Send.clicked.connect(self.UartSend)
 
     # 串口对象的port属性
 
