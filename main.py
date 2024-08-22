@@ -35,6 +35,8 @@ class SerialTool(QMainWindow,Ui_MainWindow):
         self.initCOM()             #   串口初始化
         self.init_timer()          #   初始化定时器
 
+        self.groupBox_3.setVisible(False)
+
         #   收到串口数据后会启动槽函数， 执行uart_receive_display函数
         self.signalRecieve.connect(self.uart_receive_display)
         self.plot_widget = pg.PlotWidget()
@@ -48,7 +50,11 @@ class SerialTool(QMainWindow,Ui_MainWindow):
         # 配置PlotWidget
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.setRange(xRange=[0, 200], yRange=[0, 5], padding=0)
+<<<<<<< HEAD
         self.plot_widget.setLabels(left='y / V', bottom='x / point', title='y = sin(x)')  # 设置坐标轴标签和标题
+=======
+        self.plot_widget.setLabels(left='y / V', bottom='x / point', title='电容充放电曲线')  # 设置坐标轴标签和标题
+>>>>>>> ea43ca27121b8c3d09d26635a64209599fa617a1
 
         # 初始化数据
         self.point_data = np.zeros(200)
@@ -87,6 +93,15 @@ class SerialTool(QMainWindow,Ui_MainWindow):
         #     self.idx =0
 
     def setupUi_my(self):
+
+
+        self.font = QFont()
+        self.font.setPointSize(20)
+        self.Textbrowser_Receive.setFont(self.font)
+
+
+
+
 
         theme = self.menubar.addMenu('主题切换')
         qt_m = QAction('Qt_Material',self)
@@ -271,12 +286,15 @@ class SerialTool(QMainWindow,Ui_MainWindow):
             else:
                 self.recv_data = obj.strip()                        #2进制显示已经转字符串了
 
+
         else:  # 普通显示模式 来的数据依然是bytes 需要先解码
             # ---------------------- 关于是否显示时间 ---------------------
             if self.Box_Display_time.isChecked(): # 需要显示时间
                 self.recv_data = '\r\n' + new_time + obj.decode('utf-8', "ignore")
             else:
-                self.recv_data = obj.decode('utf-8', "ignore")
+                self.recv_data = obj.strip()                        #2进制显示已经转字符串了
+                #self.recv_data = obj.decode('utf-8', "ignore")
+                #print(type(self.recv_data), self.recv_data)
 
         if self.Box_Display_send.isChecked():  # 输入显示发送的话，接收到的数据就要加上[Receive]:
             self.recv_data = '\r\n' + '[Receive]:' + self.recv_data
@@ -321,13 +339,17 @@ class SerialTool(QMainWindow,Ui_MainWindow):
                     high_byte = byte_list[1]
                     combined_value = (high_byte << 8) | low_byte
                     temp = (5 / 1024) * combined_value
+<<<<<<< HEAD
                     print(temp)
+=======
+>>>>>>> ea43ca27121b8c3d09d26635a64209599fa617a1
                     if len(self.point_data) < self.N:  # 如果数组未满，则直接添加新数据
                         self.point_data.append(temp)
                     else:  # 如果数组已满，则移除最旧的数据点，并添加新数据点
                         self.point_data[:-1] = self.point_data[1:]
                         self.point_data[-1] = temp
 
+<<<<<<< HEAD
 
 
 
@@ -338,6 +360,8 @@ class SerialTool(QMainWindow,Ui_MainWindow):
 
 
 
+=======
+>>>>>>> ea43ca27121b8c3d09d26635a64209599fa617a1
                 if self.Box_Display_hex.isChecked():  # hex 显示
                     hex_data = ''
                     for i in range(0, len(self.data)): #从bytes中取一个字节
@@ -345,9 +369,15 @@ class SerialTool(QMainWindow,Ui_MainWindow):
                     # self.Textbrowser_Receive.append(hex_data.strip())
                     self.signalRecieve.emit(hex_data)                           # 将数据发送出去
                 else:
+                    f_data = "{:.2f}".format(temp) + ' V' + '\r\n'
                     # self.Textbrowser_Receive.append(data.decode().strip())
                     # self.Textbrowser_Receive.insertPlainText(data.decode('utf-8',"ignore"))
-                    self.signalRecieve.emit(self.data)      # 数据传到槽函数中进行deencode解码
+                    #self.signalRecieve.emit(self.data)      # 数据传到槽函数中进行deencode解码
+                    self.signalRecieve.emit(f_data)      # 数据传到槽函数中进行deencode解码
+                    # f_data = "{:.2f}".format(temp) +' V' +'\r\n'
+                    # self.Textbrowser_Receive.insertPlainText(f_data)
+                    # # 文本框显示到底部
+                    # self.Textbrowser_Receive.moveCursor(self.Textbrowser_Receive.textCursor().End)
 
             time.sleep(0.1)
 
