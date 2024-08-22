@@ -3,7 +3,7 @@ import sys
 import time
 import serial
 import numpy as np
-
+from random import uniform
 import pyqtgraph as pg
 import array
 from datetime import datetime
@@ -44,30 +44,47 @@ class SerialTool(QMainWindow,Ui_MainWindow):
         self.widget.setLayout(self.layout1)
         self.layout1.addWidget(self.plot_widget)
         self.N = 200
+
         # 配置PlotWidget
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.setRange(xRange=[0, 200], yRange=[-1.2, 1.2], padding=0)
+        self.plot_widget.setRange(xRange=[0, 200], yRange=[0, 5], padding=0)
         self.plot_widget.setLabels(left='y / V', bottom='x / point', title='y = sin(x)')  # 设置坐标轴标签和标题
 
         # 初始化数据
-        self.data = np.zeros(200)
-        self.curve = self.plot_widget.plot(self.data, pen='y')
+        self.point_data = np.zeros(200)
+        self.curve = self.plot_widget.plot(self.point_data, pen='y')
         self.idx = 0
         # 定时器
         self.timer = pg.QtCore.QTimer()
-        self.timer.timeout.connect(self.update_plot)
-        self.timer.start(10)
+        self.timer.timeout.connect(self.update_random)
+        self.timer.start(30)
 
-    def update_plot(self):
+    # def update_sin(self):
+    #     # global idx  # 声明idx为全局变量
+    #     tmp = np.sin(np.pi / 50 * self.idx)  # 计算当前索引对应的正弦值  这个是造的正弦波数据
+    #     if len(self.point_data) < self.N:  # 如果数组未满，则直接添加新数据
+    #         self.point_data.append(tmp)
+    #     else:  # 如果数组已满，则移除最旧的数据点，并添加新数据点
+    #         self.point_data[:-1] = self.point_data[1:]
+    #         self.point_data[-1] = tmp
+    #     self.curve.setData(self.point_data)  # 更新曲线数据
+    #     self.idx += 1  # 索引自增
+
+
+    def update_random(self):
         # global idx  # 声明idx为全局变量
-        tmp = np.sin(np.pi / 50 * self.idx)  # 计算当前索引对应的正弦值
-        if len(self.data) < self.N:  # 如果数组未满，则直接添加新数据
-            self.data.append(tmp)
-        else:  # 如果数组已满，则移除最旧的数据点，并添加新数据点
-            self.data[:-1] = self.data[1:]
-            self.data[-1] = tmp
-        self.curve.setData(self.data)  # 更新曲线数据
-        self.idx += 1  # 索引自增
+        #tmp = (3.3/255)*self.idx # 计算当前索引对应的正弦值  这个是造的正弦波数据
+        # if len(self.point_data) < self.N:  # 如果数组未满，则直接添加新数据
+        #     self.point_data.append(tmp)
+        # else:  # 如果数组已满，则移除最旧的数据点，并添加新数据点
+        #     self.point_data[:-1] = self.point_data[1:]
+        #     self.point_data[-1] = tmp
+
+        self.curve.setData(self.point_data)  # 更新曲线数据
+        # self.idx += 10  # 索引自增
+        #
+        # if self.idx > 255:
+        #     self.idx =0
 
     def setupUi_my(self):
 
@@ -285,12 +302,42 @@ class SerialTool(QMainWindow,Ui_MainWindow):
     '''
     def UartRead(self):
 
-        print('我是被进程调用的函数UartRead')
+        # print('我是被进程调用的函数UartRead')
         while self.l_serial.isOpen():
 
             num = self.l_serial.inWaiting()
             if num:
                 self.data = self.l_serial.read(num)   # self.data 就是 bytes类
+                #这种情况说明有2个字节的数据一起来了
+
+
+                byte_list=[]
+                if len(self.data) == 2:
+                    for item in self.data:
+                        # print(type(item),item)
+                        byte_list.append(item)
+
+                    low_byte = byte_list[0]
+                    high_byte = byte_list[1]
+                    combined_value = (high_byte << 8) | low_byte
+                    temp = (5 / 1024) * combined_value
+                    print(temp)
+                    if len(self.point_data) < self.N:  # 如果数组未满，则直接添加新数据
+                        self.point_data.append(temp)
+                    else:  # 如果数组已满，则移除最旧的数据点，并添加新数据点
+                        self.point_data[:-1] = self.point_data[1:]
+                        self.point_data[-1] = temp
+
+
+
+
+                #str_data = int.from_bytes(self.data, byteorder='big')  # 假设编码为 utf-8
+
+
+
+
+
+
                 if self.Box_Display_hex.isChecked():  # hex 显示
                     hex_data = ''
                     for i in range(0, len(self.data)): #从bytes中取一个字节
